@@ -6,13 +6,24 @@ var map;
  */
 window.initMap = () => {
   fetchRestaurantFromURL((error, restaurant) => {
-    if (error) { // Got an error!
+    if (error) {
+      // Got an error!
       console.error(error);
     } else {
-      self.map = new google.maps.Map(document.getElementById('map'), {
+      self.map = new google.maps.Map(document.querySelector("map"), {
         zoom: 16,
         center: restaurant.latlng,
         scrollwheel: false
+      });
+
+      let listener = self.map.addListener("tilesloaded", () => {
+        document
+          .querySelectorAll("map a")
+          .forEach(t => t.setAttribute("tabindex", -1));
+        document
+          .querySelectorAll("map div")
+          .forEach(t => t.setAttribute("tabindex", -1));
+        google.maps.event.removeListener(listener);
       });
       fillBreadcrumb();
       DBHelper.mapMarkerForRestaurant(self.restaurant, self.map);
@@ -49,17 +60,21 @@ fetchRestaurantFromURL = (callback) => {
  * Create restaurant HTML and add it to the webpage
  */
 fillRestaurantHTML = (restaurant = self.restaurant) => {
-  const name = document.getElementById('restaurant-name');
+  const name = document.getElementById("restaurant-name");
+  name.tabIndex = 0;
   name.innerHTML = restaurant.name;
 
-  const address = document.getElementById('restaurant-address');
+  const address = document.getElementById("restaurant-address");
+  address.tabIndex = 0;
   address.innerHTML = restaurant.address;
 
-  const image = document.getElementById('restaurant-img');
-  image.className = 'restaurant-img'
+  const image = document.getElementById("restaurant-img");
+  image.tabIndex = 0;
+  image.className = "restaurant-img";
+  image.alt = `Exterior photo of the restaurant ${restaurant.name}`;
   image.src = DBHelper.imageUrlForRestaurant(restaurant);
 
-  const cuisine = document.getElementById('restaurant-cuisine');
+  const cuisine = document.getElementById("restaurant-cuisine");
   cuisine.innerHTML = restaurant.cuisine_type;
 
   // fill operating hours
@@ -73,16 +88,19 @@ fillRestaurantHTML = (restaurant = self.restaurant) => {
 /**
  * Create restaurant operating hours HTML table and add it to the webpage.
  */
-fillRestaurantHoursHTML = (operatingHours = self.restaurant.operating_hours) => {
-  const hours = document.getElementById('restaurant-hours');
+fillRestaurantHoursHTML = (
+  operatingHours = self.restaurant.operating_hours
+) => {
+  const hours = document.getElementById("restaurant-hours");
+  hours.tabIndex = 0;
   for (let key in operatingHours) {
-    const row = document.createElement('tr');
+    const row = document.createElement("tr");
 
-    const day = document.createElement('td');
+    const day = document.createElement("td");
     day.innerHTML = key;
     row.appendChild(day);
 
-    const time = document.createElement('td');
+    const time = document.createElement("td");
     time.innerHTML = operatingHours[key];
     row.appendChild(time);
 
@@ -115,23 +133,37 @@ fillReviewsHTML = (reviews = self.restaurant.reviews) => {
 /**
  * Create review HTML and add it to the webpage.
  */
-createReviewHTML = (review) => {
-  const li = document.createElement('li');
-  const name = document.createElement('p');
+createReviewHTML = review => {
+  const li = document.createElement("li");
+  li.classList.add("review");
+
+  const topDiv = document.createElement("div");
+  topDiv.classList.add("review-header");
+  li.appendChild(topDiv);
+
+  const name = document.createElement("p");
   name.innerHTML = review.name;
-  li.appendChild(name);
+  name.classList.add("reviewer");
+  topDiv.appendChild(name);
 
-  const date = document.createElement('p');
+  const date = document.createElement("time");
   date.innerHTML = review.date;
-  li.appendChild(date);
+  date.classList.add("review-date");
+  topDiv.appendChild(date);
 
-  const rating = document.createElement('p');
+  const bodyDiv = document.createElement("div");
+  bodyDiv.classList.add("review-body");
+  li.appendChild(bodyDiv);
+
+  const rating = document.createElement("p");
   rating.innerHTML = `Rating: ${review.rating}`;
-  li.appendChild(rating);
+  rating.classList.add("review-rating");
+  bodyDiv.appendChild(rating);
 
-  const comments = document.createElement('p');
+  const comments = document.createElement("p");
   comments.innerHTML = review.comments;
-  li.appendChild(comments);
+  comments.classList.add("review-text");
+  bodyDiv.appendChild(comments);
 
   return li;
 }
@@ -139,10 +171,11 @@ createReviewHTML = (review) => {
 /**
  * Add restaurant name to the breadcrumb navigation menu
  */
-fillBreadcrumb = (restaurant=self.restaurant) => {
-  const breadcrumb = document.getElementById('breadcrumb');
-  const li = document.createElement('li');
+fillBreadcrumb = (restaurant = self.restaurant) => {
+  const breadcrumb = document.getElementById("breadcrumb");
+  const li = document.createElement("li");
   li.innerHTML = restaurant.name;
+  li.setAttribute("aria-current", "page");
   breadcrumb.appendChild(li);
 }
 
@@ -160,4 +193,15 @@ getParameterByName = (name, url) => {
   if (!results[2])
     return '';
   return decodeURIComponent(results[2].replace(/\+/g, ' '));
+}
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("/sw.js", { scope: "" })
+    .then(function(reg) {
+      console.log("Registration succeeded. Scope is " + reg.scope);
+    })
+    .catch(function(error) {
+      console.log("Registration failed with " + error);
+    });
 }
